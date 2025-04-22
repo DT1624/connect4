@@ -115,32 +115,6 @@ def output(old_board, new_board, str_state, existing_data):
 
     return col, str_state
 
-    # try:
-    #     url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
-    #     response = requests.get(url, timeout=2)
-    #     response.raise_for_status()
-    #     data = response.json()
-    #     # print(data)
-    #     filtered_data = [int(move["move"]) - 1 for move in data if move["score"] >= 0]
-    #     print(filtered_data)
-    #     for moves in data:
-    #         print(moves)
-    #
-    #     # Get max score move
-    #     best_move = max(data, key=lambda move: move["score"])
-    #     move = int(best_move["move"]) - 1
-    #
-    #     if move in valid_moves:
-    #         return move, str_state
-    #     return random.choice(valid_moves), str_state
-    # except requests.exceptions.RequestException as e:
-    #     print(f"🌐 Request failed: {e}")
-    # except (ValueError, KeyError) as e:
-    #     print(f"❗ Error API: {e}")
-    # except Exception as e:
-    #     print(f"⚠️ ERROR: {e}")
-    #
-    # return random.choice(valid_moves), str_state
 
 # Create API by ngrok
 app = FastAPI()
