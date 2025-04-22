@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-WORKDIR /api
+WORKDIR /app
 
 # Cài đặt dependencies cơ bản
 RUN apt-get update && apt-get install -y \
@@ -27,4 +27,4 @@ EXPOSE $PORT
 
 
 # Khởi chạy ứng dụng với uvicorn
-CMD uvicorn api::app --host 0.0.0.0 --port $PORT
+CMD uvicorn app::app --host 0.0.0.0 --port $PORT
