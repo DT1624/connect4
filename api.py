@@ -185,6 +185,7 @@ async def make_move(game_state: GameState) -> AIResponse:
     try:
         start_time = time.time()
         print(game_state.current_player)
+        print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
