@@ -7,6 +7,9 @@ import uvicorn
 from pydantic import BaseModel
 from typing import List
 
+# from pyngrok import ngrok
+
+
 class GameState(BaseModel):
     board: List[List[int]]
     current_player: int
@@ -65,15 +68,8 @@ def output(old_board, new_board, str_state, valid_moves):
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         response = response.json()
-
-        column_priority = [3, 2, 4, 1, 5, 0, 6]
-        priority_map = {col: i for i, col in enumerate(column_priority)}
-        response.sort(key=lambda move: (-move["score"], priority_map[move["move"]]))
-        print(response)
-        best_move = max(response, key=lambda move: (move["score"], -priority_map[move["move"]]))
-        print(best_move)
-        # response.sort(key=lambda move: (-move["score"], move["move"]))
-        # best_move = max(response, key=lambda move: move["score"])
+        # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
+        best_move = max(response, key=lambda move: move["score"])
         col = int(best_move["move"]) - 1
     except requests.exceptions.RequestException as e:
         print(f"🌐 Request failed: {e}")
@@ -125,3 +121,11 @@ async def make_move(game_state: GameState) -> AIResponse:
         if game_state.valid_moves:
             return AIResponse(move=game_state.valid_moves[0])
         raise HTTPException(status_code=400, detail=str(e))
+
+# if __name__ == "__main__":
+#     port = 8080
+#     public_url = ngrok.connect(str(port)).public_url  # Kết nối ngrok
+#     print(f"🔥 Public URL: {public_url}")  # Hiển thị link API
+#
+#     # Chạy FastAPI với Uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=port)
