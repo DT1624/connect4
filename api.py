@@ -69,6 +69,52 @@ def state_new(old, new, state):
     return state
 
 
+# def output(old_board, new_board, str_state, existing_data):
+#     # if it is new game
+#     if is_board_empty(new_board) or sum(cell != 0 for row in new_board for cell in row) == 1:
+#         print("This is new game")
+#         old_board = create_board()
+#         str_state = ""
+#     print("old board")
+#     print_board(old_board)
+#     print("new board")
+#     print_board(new_board)
+#     str_state = state_new(old_board, new_board, str_state)
+#
+#     # filename = "D:/Tài liệu 2022-2026/(II 2024-2025)/Trí tuệ nhân tạo/ConnectFour - Copy/board_response_test.jsonl"
+#     col = random.choice(get_valid_moves(new_board))
+#
+#     check = False
+#     for item in existing_data:
+#         if item["board"] == new_board:
+#             response = item["response"]
+#             best_move = max(response, key=lambda move: move["score"])
+#             print(item["response"])
+#             col = int(best_move["move"]) - 1
+#             check = True
+#     if not check:
+#         print("Not exists")
+#         try:
+#             url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
+#             response = requests.get(url, timeout=5)
+#             response.raise_for_status()
+#             response = response.json()
+#             response.sort(key=lambda move: (-move["score"], move["move"]))
+#             print(response)
+#             best_move = max(response, key=lambda move: move["score"])
+#             col = int(best_move["move"]) - 1
+#         except requests.exceptions.RequestException as e:
+#             print(f"🌐 Request failed: {e}")
+#         except (ValueError, KeyError) as e:
+#             print(f"❗ Error API: {e}")
+#         except Exception as e:
+#             print(f"⚠️ ERROR: {e}")
+#
+#     else:
+#         print("Already exists")
+#
+#     return col, str_state
+
 def output(old_board, new_board, str_state, existing_data):
     # if it is new game
     if is_board_empty(new_board) or sum(cell != 0 for row in new_board for cell in row) == 1:
@@ -144,8 +190,10 @@ async def make_move(game_state: GameState) -> AIResponse:
 
         global old_board, str_state, existing_data
         new_board = deepcopy(game_state.board)
-
+        existing_data = []
+        print("aa")
         selected_move, str_state = output(old_board, new_board, str_state, existing_data)
+        print("bbb")
         str_state += str(selected_move + 1)
 
         old_board = deepcopy(new_board)
