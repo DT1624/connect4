@@ -209,7 +209,7 @@ def play_game(player):
     print_board(board)
     state = ""
 
-    filename = "D:/UET 2022-2026\(II 2024-2025)/Trí tuệ nhân tạo/ConnectFour - Copy/board_response_test.jsonl"
+    filename = "board_response_test.jsonl"
     print(os.path.exists(filename))
     existing_data = []
     with open(filename, "r", encoding="utf-8") as f:
@@ -283,7 +283,7 @@ def play_game(player):
                 break
             player = 1 if player == 2 else 2
 
-def get_data(file = "D:/UET 2022-2026/(II 2024-2025)/Trí tuệ nhân tạo/ConnectFour - Copy/board_response_test.jsonl"):
+def get_data(file = "board_response_test.jsonl"):
     data = []
     with open(file, "r", encoding="utf-8") as f:
         for number_line, lines in enumerate(f, 1):
@@ -296,18 +296,18 @@ def get_data(file = "D:/UET 2022-2026/(II 2024-2025)/Trí tuệ nhân tạo/Conn
                     print(f"Error Jsom {number_line}: {e}")
     return data
 
-if __name__ == "__main__":
-    filename = "D:/UET 2022-2026/(II 2024-2025)/Trí tuệ nhân tạo/ConnectFour - Copy/board_response_test.jsonl"
-    print(os.path.exists(filename))
-    existing_data = get_data()
-
-    # exising_data = []
-    port = 8080
-    public_url = ngrok.connect(str(port)).public_url  # Kết nối ngrok
-    print(f"🔥 Public URL: {public_url}")  # Hiển thị link API
-
-    # Chạy FastAPI với Uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# if __name__ == "__main__":
+#     filename = "D:/UET 2022-2026/(II 2024-2025)/Trí tuệ nhân tạo/ConnectFour - Copy/board_response_test.jsonl"
+#     print(os.path.exists(filename))
+#     existing_data = get_data()
+#
+#     # exising_data = []
+#     port = 8080
+#     public_url = ngrok.connect(str(port)).public_url  # Kết nối ngrok
+#     print(f"🔥 Public URL: {public_url}")  # Hiển thị link API
+#
+#     # Chạy FastAPI với Uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=port)
 
 # if __name__ == "__main__":
 #     play_game(1)
