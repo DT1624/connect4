@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+WORKDIR /api
 
 # Cài đặt dependencies cơ bản
 RUN apt-get update && apt-get install -y \
