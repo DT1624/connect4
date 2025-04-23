@@ -7,17 +7,7 @@ import uvicorn
 from pydantic import BaseModel
 from typing import List
 
-# from pyngrok import ngrok
-
-
-class GameState(BaseModel):
-    board: List[List[int]]
-    current_player: int
-    valid_moves: List[int]
-    is_new_game: bool
-
-class AIResponse(BaseModel):
-    move: int
+from pyngrok import ngrok
 
 EMPTY = 0
 
@@ -83,6 +73,15 @@ def output(old_board, new_board, str_state, valid_moves):
 
 # Create API by ngrok
 app = FastAPI()
+
+class GameState(BaseModel):
+    board: List[List[int]]
+    current_player: int
+    valid_moves: List[int]
+    is_new_game: bool
+
+class AIResponse(BaseModel):
+    move: int
 
 old_board = create_board()
 str_state = ""
