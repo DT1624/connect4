@@ -1,12 +1,11 @@
 from copy import deepcopy
 import requests
 import random
-
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel
 from typing import List
-
+from itertools import zip_longest
 from pyngrok import ngrok
 
 EMPTY = 0
@@ -44,13 +43,34 @@ def is_valid_move(board, col):
 def get_valid_moves(board):
     return [col for col in range(len(board[0])) if is_valid_move(board, col)]
 
-def output(old_board, new_board, str_state, valid_moves):
-    str_state = state_new(old_board, new_board, str_state)
+def encode_pos_string(board):
+    moves_p1 = []
+    moves_p2 = []
+
+    for row in range(5, -1, -1):
+        for col in range(7):
+            cell = board[row][col]
+            if cell == 1:
+                moves_p1.append(col + 1)
+            elif cell == 2:
+                moves_p2.append(col + 1)
+
+    pos_list = []
+    for m1, m2 in zip_longest(moves_p1, moves_p2):
+        if m1 is not None:
+            pos_list.append(str(m1))
+        if m2 is not None:
+            pos_list.append(str(m2))
+
+    return ''.join(pos_list)
+
+def output(board, valid_moves):
+    state = encode_pos_string(board)
 
     col = random.choice(valid_moves)
 
     try:
-        url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
+        url = f"http://ludolab.net/solve/connect4?position={state}&level=10"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         response = response.json()
@@ -68,7 +88,7 @@ def output(old_board, new_board, str_state, valid_moves):
     if col not in valid_moves:
         col = random.choice(valid_moves)
 
-    return col, str_state
+    return col
 
 
 # Create API by ngrok
@@ -83,9 +103,6 @@ class GameState(BaseModel):
 class AIResponse(BaseModel):
     move: int
 
-old_board = create_board()
-str_state = ""
-
 @app.get("/api/test")
 async def health_check():
     return {"status": "ok", "message": "Server is running"}
@@ -93,28 +110,17 @@ async def health_check():
 @app.post("/api/connect4-move")
 async def make_move(game_state: GameState) -> AIResponse:
     try:
-        global old_board, str_state
-        if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
-            old_board = create_board()
-            str_state = ""
-        new_board = deepcopy(game_state.board)
-
-        print("new board")
-        print_board(new_board)
-
         print(game_state.current_player)
         print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
-        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves)
-        str_state += str(selected_move + 1)
+        board = game_state.board
+        valid_moves = game_state.valid_moves
+        selected_move = output(board, valid_moves)
 
-        old_board = deepcopy(new_board)
-        row = get_row(old_board, selected_move)
-        old_board[row][selected_move] = game_state.current_player
-        print("old board")
-        print_board(old_board)
+        row = get_row(board, selected_move)
+        board[row][selected_move] = game_state.current_player
 
         print("Choose", selected_move)
 
