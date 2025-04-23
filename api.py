@@ -51,7 +51,7 @@ def output(old_board, new_board, str_state, valid_moves):
 
     try:
         url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         response = response.json()
         print(response)
