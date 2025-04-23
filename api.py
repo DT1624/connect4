@@ -61,6 +61,7 @@ def output(old_board, new_board, str_state, valid_moves):
         if len(filtered_moves) > 0:
             best_move = random.choice(filtered_moves)
         col = int(best_move["move"]) - 1
+
     except requests.exceptions.RequestException as e:
         print(f"🌐 Request failed: {e}")
     except (ValueError, KeyError) as e:
