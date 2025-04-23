@@ -54,7 +54,7 @@ def output(old_board, new_board, str_state, valid_moves):
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         response = response.json()
-        print(response)
+        # print(response)
         # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
         best_move = max(response, key=lambda move: move["score"])
         col = int(best_move["move"]) - 1
@@ -99,11 +99,11 @@ async def make_move(game_state: GameState) -> AIResponse:
             str_state = ""
         new_board = deepcopy(game_state.board)
 
-        print("new board")
-        print_board(new_board)
-
-        print(game_state.current_player)
-        print(game_state)
+        # print("new board")
+        # print_board(new_board)
+        #
+        # print(game_state.current_player)
+        # print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
@@ -113,10 +113,10 @@ async def make_move(game_state: GameState) -> AIResponse:
         old_board = deepcopy(new_board)
         row = get_row(old_board, selected_move)
         old_board[row][selected_move] = game_state.current_player
-        print("old board")
-        print_board(old_board)
-
-        print("Choose", selected_move)
+        # print("old board")
+        # print_board(old_board)
+        #
+        # print("Choose", selected_move)
 
         return AIResponse(move=selected_move)
     except Exception as e:
