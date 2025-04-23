@@ -57,6 +57,9 @@ def output(old_board, new_board, str_state, valid_moves):
         print(response)
         # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
         best_move = max(response, key=lambda move: move["score"])
+        filtered_moves = [move for move in response if move["score"] >= 0]
+        if len(filtered_moves) > 0:
+            best_move = random.choice(filtered_moves)
         col = int(best_move["move"]) - 1
     except requests.exceptions.RequestException as e:
         print(f"🌐 Request failed: {e}")
