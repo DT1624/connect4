@@ -78,7 +78,7 @@ class GameState(BaseModel):
     board: List[List[int]]
     current_player: int
     valid_moves: List[int]
-    is_new_game: bool
+    # is_new_game: bool
 
 class AIResponse(BaseModel):
     move: int
@@ -94,7 +94,7 @@ async def health_check():
 async def make_move(game_state: GameState) -> AIResponse:
     try:
         global old_board, str_state
-        if game_state.is_new_game:
+        if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
             old_board = create_board()
             str_state = ""
         new_board = deepcopy(game_state.board)
