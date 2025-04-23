@@ -78,7 +78,7 @@ class GameState(BaseModel):
     board: List[List[int]]
     current_player: int
     valid_moves: List[int]
-    is_new_game: bool
+    # is_new_game: bool
 
 class AIResponse(BaseModel):
     move: int
