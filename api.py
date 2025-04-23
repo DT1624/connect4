@@ -47,8 +47,8 @@ def encode_pos_string(board):
     moves_p1 = []
     moves_p2 = []
 
-    for row in range(5, -1, -1):
-        for col in range(7):
+    for col in range(7):
+        for row in range(5, -1, -1):
             cell = board[row][col]
             if cell == 1:
                 moves_p1.append(col + 1)
