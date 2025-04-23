@@ -94,9 +94,9 @@ async def health_check():
 async def make_move(game_state: GameState) -> AIResponse:
     try:
         global old_board, str_state
-        if game_state.is_new_game:
-            old_board = create_board()
-            str_state = ""
+        # if game_state.is_new_game:
+        #     old_board = create_board()
+        #     str_state = ""
         new_board = deepcopy(game_state.board)
 
         print("new board")
