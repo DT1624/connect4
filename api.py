@@ -51,11 +51,12 @@ def output(old_board, new_board, str_state, valid_moves):
 
     try:
         url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
-        response = requests.get(url, timeout=10)
+        print(str_state)
+        response = requests.get(url, timeout=2)
         response.raise_for_status()
         response = response.json()
         print(response)
-        # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
+        response.sort(key=lambda move: (-int(move["score"]), move["move"]))
         best_move = max(response, key=lambda move: move["score"])
         filtered_moves = [move for move in response if move["score"] >= 0]
         if len(filtered_moves) > 0:
