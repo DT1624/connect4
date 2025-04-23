@@ -66,6 +66,7 @@ def encode_pos_string(board):
 
 def output(board, valid_moves):
     state = encode_pos_string(board)
+    print(state)
 
     col = random.choice(valid_moves)
 
@@ -116,11 +117,12 @@ async def make_move(game_state: GameState) -> AIResponse:
 
         board = game_state.board
         valid_moves = game_state.valid_moves
+        print_board(board)
         selected_move = output(board, valid_moves)
 
         row = get_row(board, selected_move)
         board[row][selected_move] = game_state.current_player
-
+        print_board(board)
         print("Choose", selected_move)
 
         return AIResponse(move=selected_move)
