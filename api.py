@@ -7,17 +7,7 @@ import uvicorn
 from pydantic import BaseModel
 from typing import List
 
-# from pyngrok import ngrok
-
-
-class GameState(BaseModel):
-    board: List[List[int]]
-    current_player: int
-    valid_moves: List[int]
-    is_new_game: bool
-
-class AIResponse(BaseModel):
-    move: int
+from pyngrok import ngrok
 
 EMPTY = 0
 
@@ -84,6 +74,16 @@ def output(old_board, new_board, str_state, valid_moves):
 # Create API by ngrok
 app = FastAPI()
 
+class GameState(BaseModel):
+    board: List[List[int]]
+    current_player: int
+    valid_moves: List[int]
+    game_over: bool
+    winner: int
+
+class AIResponse(BaseModel):
+    move: int
+
 old_board = create_board()
 str_state = ""
 
@@ -95,7 +95,7 @@ async def health_check():
 async def make_move(game_state: GameState) -> AIResponse:
     try:
         global old_board, str_state
-        if game_state.is_new_game:
+        if game_state.game_over:
             old_board = create_board()
             str_state = ""
         new_board = deepcopy(game_state.board)
