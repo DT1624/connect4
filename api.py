@@ -30,11 +30,13 @@ def get_row(board, col):
     return None
 
 def state_new(old, new, state):
-    for i in range(len(old)):
-        for j in range(len(old[0])):
+    for j in range(len(old[0])):
+        for i in range(len(old)):
             if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j]:
                 state += str(j + 1)
                 return state
+            if old[i][j] != 0:
+                break
     return state
 
 # kiểm tra 1 cột có valid
@@ -73,10 +75,10 @@ def output(old_board, new_board, str_state, valid_moves, data_map):
 
     col = random.choice(valid_moves)
     if json.dumps(new_board) in data_map:
-        print("Exists")
+        # print("Exists")
         key = json.dumps(new_board, sort_keys=False)
         response = data_map[key]
-        print(response)
+        # print(response)
         best_move = max(response, key=lambda move: move["score"])
         col = int(best_move["move"]) - 1
         return col, str_state
@@ -86,8 +88,6 @@ def output(old_board, new_board, str_state, valid_moves, data_map):
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         response = response.json()
-        # print(response)
-        # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
         best_move = max(response, key=lambda move: move["score"])
         col = int(best_move["move"]) - 1
     except requests.exceptions.RequestException as e:
@@ -132,11 +132,6 @@ async def make_move(game_state: GameState) -> AIResponse:
             str_state = ""
         new_board = [row[:] for row in game_state.board]
 
-        # print("new board")
-        # print_board(new_board)
-        #
-        # print(game_state.current_player)
-        # print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
@@ -156,11 +151,3 @@ async def make_move(game_state: GameState) -> AIResponse:
         if game_state.valid_moves:
             return AIResponse(move=game_state.valid_moves[0])
         raise HTTPException(status_code=400, detail=str(e))
-
-# if __name__ == "__main__":
-#     port = 8080
-#     public_url = ngrok.connect(str(port)).public_url  # Kết nối ngrok
-#     print(f"🔥 Public URL: {public_url}")  # Hiển thị link API
-#
-#     # Chạy FastAPI với Uvicorn
-#     uvicorn.run(app, host="0.0.0.0", port=port)
