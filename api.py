@@ -73,6 +73,7 @@ def output(old_board, new_board, str_state, valid_moves, data_map):
 
     col = random.choice(valid_moves)
     if json.dumps(new_board) in data_map:
+        print("Exists")
         key = json.dumps(new_board, sort_keys=False)
         response = data_map[key]
         print(response)
