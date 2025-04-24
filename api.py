@@ -29,14 +29,26 @@ def get_row(board, col):
             return row
     return None
 
-def state_new(old, new, state):
-    for j in range(len(old[0])):
-        for i in range(len(old)):
-            if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j]:
-                state += str(j + 1)
-                return state
-            if old[i][j] != 0:
-                break
+# def state_new1(old, new, state):
+#     for j in range(len(old[0])):
+#         for i in range(len(old)):
+#             if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j]:
+#                 state += str(j + 1)
+#                 return state
+#             if old[i][j] != 0:
+#                 break
+#     return state
+def state_new(old: list[list[int]], new: list[list[int]], state: str) -> str:
+    for col in range(len(old[0])):
+        for row in range(len(old)):
+            old_cell = old[row][col]
+            new_cell = new[row][col]
+
+            if old_cell != new_cell and old_cell == 0:
+                return state + str(col + 1)
+
+            if old_cell != 0:
+                break  # Không cần xét tiếp cột này nếu ô đầu đã khác 0
     return state
 
 # kiểm tra 1 cột có valid
@@ -74,9 +86,8 @@ def output(old_board, new_board, str_state, valid_moves, data_map):
     str_state = state_new(old_board, new_board, str_state)
 
     col = random.choice(valid_moves)
-    if json.dumps(new_board) in data_map:
-        # print("Exists")
-        key = json.dumps(new_board, sort_keys=False)
+    key = json.dumps(new_board, sort_keys=False)
+    if key in data_map:
         response = data_map[key]
         # print(response)
         best_move = max(response, key=lambda move: move["score"])
