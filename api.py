@@ -1,4 +1,5 @@
-from copy import deepcopy
+import json
+import os
 import requests
 import random
 
@@ -44,10 +45,40 @@ def is_valid_move(board, col):
 def get_valid_moves(board):
     return [col for col in range(len(board[0])) if is_valid_move(board, col)]
 
-def output(old_board, new_board, str_state, valid_moves):
+def get_data():
+    filename = "board_response_test.jsonl"
+    existing_data_map = {}
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                for line_number, line in enumerate(f, 1):
+                    line = line.strip()
+                    if line:
+                        try:
+                            obj = json.loads(line)
+                            key = obj.get("board")
+                            value = obj.get("response")
+                            key = json.dumps(key, sort_keys=False)
+                            if key is not None:
+                                existing_data_map[key] = value
+                        except json.JSONDecodeError as e:
+                            print(f"Error JSON at line {line_number}: {e}")
+        except Exception as e:
+            print(f"Could not read '{filename}': {e}")
+
+    return existing_data_map
+
+def output(old_board, new_board, str_state, valid_moves, data_map):
     str_state = state_new(old_board, new_board, str_state)
 
     col = random.choice(valid_moves)
+    if json.dumps(new_board) in data_map:
+        key = json.dumps(new_board, sort_keys=False)
+        response = data_map[key]
+        print(response)
+        best_move = max(response, key=lambda move: move["score"])
+        col = int(best_move["move"]) - 1
+        return col, str_state
 
     try:
         url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
@@ -85,6 +116,7 @@ class AIResponse(BaseModel):
 
 old_board = create_board()
 str_state = ""
+data_map = get_data()
 
 @app.get("/api/test")
 async def health_check():
@@ -93,11 +125,11 @@ async def health_check():
 @app.post("/api/connect4-move")
 async def make_move(game_state: GameState) -> AIResponse:
     try:
-        global old_board, str_state
+        global old_board, str_state, data_map
         if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
             old_board = create_board()
             str_state = ""
-        new_board = deepcopy(game_state.board)
+        new_board = [row[:] for row in game_state.board]
 
         # print("new board")
         # print_board(new_board)
@@ -107,10 +139,10 @@ async def make_move(game_state: GameState) -> AIResponse:
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
-        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves)
+        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves, data_map)
         str_state += str(selected_move + 1)
 
-        old_board = deepcopy(new_board)
+        old_board = [row[:] for row in new_board]
         row = get_row(old_board, selected_move)
         old_board[row][selected_move] = game_state.current_player
         # print("old board")
