@@ -147,7 +147,7 @@ async def make_move(game_state: GameState) -> AIResponse:
         old_board[row][selected_move] = game_state.current_player
         # print("old board")
         # print_board(old_board)
-        #
+
         # print("Choose", selected_move)
 
         return AIResponse(move=selected_move)
