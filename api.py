@@ -43,8 +43,7 @@ def state_new(old: list[list[int]], new: list[list[int]], state: str) -> str:
         for row in range(len(old)):
             old_cell = old[row][col]
             new_cell = new[row][col]
-
-            if old_cell != new_cell and old_cell == 0:
+            if old_cell != new_cell and old_cell == 0 and new_cell > 0:
                 return state + str(col + 1)
 
             if old_cell != 0:
