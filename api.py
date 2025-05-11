@@ -30,7 +30,7 @@ def get_row(board, col):
 def state_new(old, new, state):
     for i in range(len(old)):
         for j in range(len(old[0])):
-            if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j]:
+            if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j] and new[i][j] > 0:
                 state += str(j + 1)
                 return state
     return state
