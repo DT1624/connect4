@@ -1,13 +1,12 @@
-from copy import deepcopy
-import requests
 import random
+import requests
+from copy import deepcopy
 
-from fastapi import FastAPI, HTTPException
 import uvicorn
-from pydantic import BaseModel
 from typing import List
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 
-from pyngrok import ngrok
 
 EMPTY = 0
 
@@ -16,12 +15,14 @@ def print_board(board):
     for a in board:
         print(a)
 
+
 def create_board():
     return [[0 for _ in range(7)] for _ in range(6)]
 
 def is_board_empty(board):
     return all(cell == 0 for row in board for cell in row)
 
+# Lấy hàng sẽ được thả tới
 def get_row(board, col):
     row = len(board)
     if row == -1: return None
@@ -59,14 +60,6 @@ def state_new(old, new, state):
                 return state
     return state
 
-# kiểm tra 1 cột có valid
-def is_valid_move(board, col):
-    return board[0][col] == EMPTY
-
-# lấy tất cả các cột valid
-def get_valid_moves(board):
-    return [col for col in range(len(board[0])) if is_valid_move(board, col)]
-
 def output(old_board, new_board, player, str_state, valid_moves):
     str_state = state_new(old_board, new_board, str_state)
     for col in valid_moves:
@@ -80,7 +73,7 @@ def output(old_board, new_board, player, str_state, valid_moves):
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         response = response.json()
-        # print(response)
+        print(response)
         # response.sort(key=lambda move: (-int(move["score"]), move["move"]))
         best_move = max(response, key=lambda move: move["score"])
         col = int(best_move["move"]) - 1
@@ -96,8 +89,6 @@ def output(old_board, new_board, player, str_state, valid_moves):
 
     return col, str_state
 
-
-# Create API by ngrok
 app = FastAPI()
 
 class GameState(BaseModel):
@@ -125,11 +116,11 @@ async def make_move(game_state: GameState) -> AIResponse:
             str_state = ""
         new_board = deepcopy(game_state.board)
 
-        # print("new board")
-        # print_board(new_board)
-        #
-        # print(game_state.current_player)
-        # print(game_state)
+        print("new board")
+        print_board(new_board)
+
+        print(game_state.current_player)
+        print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
@@ -139,21 +130,13 @@ async def make_move(game_state: GameState) -> AIResponse:
         old_board = deepcopy(new_board)
         row = get_row(old_board, selected_move)
         old_board[row][selected_move] = game_state.current_player
-        # print("old board")
-        # print_board(old_board)
-        #
-        # print("Choose", selected_move)
+        print("old board")
+        print_board(old_board)
+
+        print("Choose", selected_move)
 
         return AIResponse(move=selected_move)
     except Exception as e:
         if game_state.valid_moves:
             return AIResponse(move=game_state.valid_moves[0])
         raise HTTPException(status_code=400, detail=str(e))
-
-# if __name__ == "__main__":
-#     port = 8080
-#     public_url = ngrok.connect(str(port)).public_url  # Kết nối ngrok
-#     print(f"🔥 Public URL: {public_url}")  # Hiển thị link API
-#
-#     # Chạy FastAPI với Uvicorn
-#     uvicorn.run(app, host="0.0.0.0", port=port)
