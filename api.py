@@ -23,10 +23,33 @@ def is_board_empty(board):
     return all(cell == 0 for row in board for cell in row)
 
 def get_row(board, col):
-    for row in reversed(range(len(board))):
-        if board[row][col] == EMPTY:
-            return row
-    return None
+    row = len(board)
+    if row == -1: return None
+    while board[row][col] != 0:
+        row -= 1
+    return row
+
+# Check nước đi nào đó có thắng không
+def is_winning_move(board, player, col):
+    row = get_row(board, col)
+    board[row][col] = player
+    for r in range(len(board)):
+        for c in range(len(board[0]) - 3):
+            if all(board[r][c + i] == player for i in range(4)):
+                return True
+    for c in range(len(board[0])):
+        for r in range(len(board) - 3):
+            if all(board[r + i][c] == player for i in range(4)):
+                return True
+    for r in range(len(board) - 3):
+        for c in range(len(board[0]) - 3):
+            if all(board[r + i][c + i] == player for i in range(4)):
+                return True
+    for r in range(3, len(board)):
+        for c in range(len(board[0]) - 3):
+            if all(board[r - i][c + i] == player for i in range(4)):
+                return True
+    return False
 
 def state_new(old, new, state):
     for i in range(len(old)):
@@ -44,8 +67,11 @@ def is_valid_move(board, col):
 def get_valid_moves(board):
     return [col for col in range(len(board[0])) if is_valid_move(board, col)]
 
-def output(old_board, new_board, str_state, valid_moves):
+def output(old_board, new_board, player, str_state, valid_moves):
     str_state = state_new(old_board, new_board, str_state)
+    for col in valid_moves:
+        if is_winning_move(new_board, player, col) or is_winning_move(new_board, 3 - player, col):
+            return col, str_state
 
     col = random.choice(valid_moves)
 
@@ -107,7 +133,7 @@ async def make_move(game_state: GameState) -> AIResponse:
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
-        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves)
+        selected_move, str_state = output(old_board, new_board, game_state.current_player ,str_state, game_state.valid_moves)
         str_state += str(selected_move + 1)
 
         old_board = deepcopy(new_board)
