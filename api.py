@@ -3,71 +3,128 @@ import requests
 import numpy as np
 from copy import deepcopy
 
-import uvicorn
 from typing import List
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 
-
-EMPTY = 0
-
-# function
+# In bảng
 def print_board(board):
-    for a in board:
-        print(a)
+    for row in board:
+        print(" ".join(f"{cell:>2}" for cell in row))
 
+# Tạo bảng với K ô bị block
+def create_board(K=2):
+    all_cells = [(r, c) for r in range(6) for c in range(7)]
+    random_cells = random.sample(all_cells, K)
+    board =  [[0 for _ in range(7)] for _ in range(6)]
+    for r, c in random_cells:
+        board[r][c] = -1
+    return board
 
-def create_board():
-    return [[0 for _ in range(7)] for _ in range(6)]
+# Kiểm tra 1 cột có nước đi hợp lệ không
+def is_valid_col(board, col):
+    for row in range(len(board)):
+        if board[row][col] == 0:
+            return True
+    return False
 
-def is_board_empty(board):
-    return all(cell == 0 for row in board for cell in row)
+# Lấy tất cả các cột có nước đi hợp lệ
+def get_valid_cols(board):
+    return [col for col in range(len(board[0])) if is_valid_col(board, col)]
 
 # Lấy hàng sẽ được thả tới
 def get_row(board, col):
     row = len(board) - 1
     while board[row][col] != 0:
-        print(row, col, board[row][col])
         if row == -1:
             return None
         row -= 1
     return row
 
 # Check nước đi nào đó có thắng không
-def is_winning_move(board, player, col):
-    board_copy = deepcopy(board)
+def is_will_winning_move(board, player, col):
+    board_copy = deepcopy(board) # copy để tránh thay đổi
     row = get_row(board_copy, col)
+    if row is None: # Nếu không có nước đi hợp lệ  cột này
+        return False
+    # Duyệt các hàng
     board_copy[row][col] = player
     for r in range(len(board_copy)):
         for c in range(len(board_copy[0]) - 3):
             if all(board_copy[r][c + i] == player for i in range(4)):
+                print("win", player, row, col, 1)
                 return True
+    # Duyệt các cột
+    for c in range(len(board_copy[0])):
+        for r in range(len(board_copy) - 3):
+            if all(board_copy[r + i][c] == player for i in range(4)):
+                print("win", player, row, col, 1)
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo chính
+    for r in range(len(board_copy) - 3):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r + i][c + i] == player for i in range(4)):
+                print("win", player, row, col, 1)
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo phụ
+    for r in range(3, len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r - i][c + i] == player for i in range(4)):
+                print("win", player, row, col, 1)
+                return True
+    return False
+
+# Check đac thắng chưa
+def is_winning_move(board, player):
+    board_copy = deepcopy(board) # copy để tránh thay đổi
+    for r in range(len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r][c + i] == player for i in range(4)):
+                return True
+    # Duyệt các cột
     for c in range(len(board_copy[0])):
         for r in range(len(board_copy) - 3):
             if all(board_copy[r + i][c] == player for i in range(4)):
                 return True
+    # Duyệt các đường chéo cùng hướng đường chéo chính
     for r in range(len(board_copy) - 3):
         for c in range(len(board_copy[0]) - 3):
             if all(board_copy[r + i][c + i] == player for i in range(4)):
                 return True
+    # Duyệt các đường chéo cùng hướng đường chéo phụ
     for r in range(3, len(board_copy)):
         for c in range(len(board_copy[0]) - 3):
             if all(board_copy[r - i][c + i] == player for i in range(4)):
                 return True
     return False
 
-def state_new(old, new, state):
+# Check bảng hiện tại có hòa không (thường k cần xét)
+def is_draw(board):
+    return sum(1 for row in board for cell in row if cell == 0) == 0
+
+# Kiểm tra đã chuyển sang ván mới chưa (có 1 hoặc chưa có nước đi)
+def is_new_game(board):
+    return sum(1 for row in board for cell in row if cell > 0) <= 1
+
+# Tạo state mới
+def get_new_state(old, new, state):
+    row, col = 6, 7
     for i in range(len(old)):
         for j in range(len(old[0])):
-            if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j] and new[i][j] > 0:
-                state += str(j + 1)
-                return state
-    return state
+            if old[i][j] == 0 and new[i][j] > 0:
+                row, col = i, j
+    if row - 1 >= 0 and new[row-1][col] == -1:
+        return state + str(col + 1) + str(col + 1)
+    return state + str(col + 1)
 
 def output(old_board, new_board, player, str_state, valid_moves):
-    str_state = state_new(old_board, new_board, str_state)
+    str_state = get_new_state(old_board, new_board, str_state)
     for col in valid_moves:
-        if is_winning_move(new_board, player, col) or is_winning_move(new_board, 3 - player, col):
+        if is_will_winning_move(new_board, player, col):
+            return col, str_state
+
+    for col in valid_moves:
+        if is_will_winning_move(new_board, 3 - player, col):
             return col, str_state
 
     col = random.choice(valid_moves)
@@ -154,21 +211,15 @@ async def make_move(game_state: GameState) -> AIResponse:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def is_draw(board):
-    return sum(1 for row in board for cell in row if cell == 0) == 0
 
-def play_game(curent_player):
+
+def play_game(current_player):
     # khởi tạo 2 board và str_state ban đầu
     old_board = create_board() #board sau lượt AI
     str_state = ""
 
-    all_cells = [(r, c) for r in range(len(old_board)) for c in range(len(old_board[0]))]
-    random_cells = random.sample(all_cells, 2)
-    for r, c in random_cells:
-        old_board[r][c] = -1
-
     new_board = deepcopy(old_board)
-    player = curent_player
+    player = current_player
     print("Old board")
     print_board(old_board)
 
@@ -177,7 +228,7 @@ def play_game(curent_player):
             print("Draw")
             break
 
-        if(player == 1):
+        if player == 1:
             choose = int(input(f"Player {player} choose: "))
             # choose =
             # while not is_valid_move(old_board, choose):
@@ -187,24 +238,29 @@ def play_game(curent_player):
             new_board[row][choose] = player
             print("New board")
             print_board(new_board)
-            if is_winning_move(new_board, player, choose):
+            if is_winning_move(new_board, player):
                 print("Player", player, "win!")
                 break
             player = 1 if player == 2 else 2
         else:
             # choose, score = minimax(board, player, MAX_DEPTH, -np.inf, np.inf, True)
-            (choose, str_state) = output(old_board, new_board, player, str_state, [0, 1, 2, 3, 4, 5, 6])
+            valid_moves = get_valid_cols(new_board)
+            (choose, str_state) = output(old_board, new_board, player, str_state, valid_moves)
             str_state += str(choose + 1)
-            print((f"Player {player} choose: "), choose)
+            print(f"Player {player} choose: ", choose)
             row = get_row(new_board, choose)
             old_board = deepcopy(new_board)
             old_board[row][choose] = player
+            if row > 0 and old_board[row - 1][choose] == -1:
+                str_state += str(choose + 1)
             print("Old board")
             print_board(old_board)
-            if is_winning_move(old_board, player, choose):
+            if is_winning_move(old_board, player):
                 print("Player", player, "win!")
                 break
             player = 1 if player == 2 else 2
+
+# def minimax(board, )
 
 if __name__ == "__main__":
     play_game(1)
