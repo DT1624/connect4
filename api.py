@@ -312,6 +312,7 @@ def output(last_board, new_board, player, last_state, valid_moves):
 
     col = random.choice(valid_moves)
     print(f"str = {last_state}")
+    print(f"col choose = {col}, A")
 
     try:
         url = f"http://connect4.gamesolver.org/solve?pos={last_state}"
@@ -341,10 +342,12 @@ def output(last_board, new_board, player, last_state, valid_moves):
     print(not_choose_cols)
     if len(valid_moves) == len(not_choose_cols):
         return random.choice(valid_moves), last_state
+    print(f"col choose = {col}, B")
 
     # Đảm bảo là nước đi sẽ luôn hợp lệ được
     while col in not_choose_cols or col not in valid_moves:
         col = random.choice(valid_moves)
+    print(f"col choose = {col}, C")
 
     return col, last_state
 
