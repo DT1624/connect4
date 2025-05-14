@@ -408,7 +408,7 @@ async def make_move(game_state: GameState) -> AIResponse:
         str_state += str(selected_move + 1)
 
         row = get_row(new_board, selected_move)
-        new_board[row][selected_move] = game_state.qcurrent_player
+        new_board[row][selected_move] = game_state.current_player
         old_board = clone_board(new_board)
         if row > 0 and old_board[row - 1][selected_move] == -1:
             str_state += str(selected_move + 1)
