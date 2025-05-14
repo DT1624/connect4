@@ -1,105 +1,280 @@
-import json
-import os
-import requests
+import math
 import random
+import time
 
-from fastapi import FastAPI, HTTPException
-import uvicorn
-from pydantic import BaseModel
+import requests
+import numpy as np
+
 from typing import List
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 
-from pyngrok import ngrok
+# clone board
+def clone_board(board):
+    return [row[:] for row in board]
 
-EMPTY = 0
-
-# function
+# In bảng
 def print_board(board):
-    for a in board:
-        print(a)
+    for row in board:
+        print(" ".join(f"{cell:>2}" for cell in row))
 
 def create_board():
     return [[0 for _ in range(7)] for _ in range(6)]
 
-def is_board_empty(board):
-    return all(cell == 0 for row in board for cell in row)
+# Tạo bảng với K ô bị block
+def add_block(board, K=2):
+    all_cells = [(r, c) for r in range(6) for c in range(7)]
+    random_cells = random.sample(all_cells, K)
+    for r, c in random_cells:
+        board[r][c] = -1
+    return board
 
+# Kiểm tra 1 cột có nước đi hợp lệ không
+def is_valid_col(board, col):
+    for row in range(len(board)):
+        if board[row][col] == 0:
+            return True
+    return False
+
+# Lấy tất cả các cột có nước đi hợp lệ
+def get_valid_cols(board):
+    return [col for col in range(len(board[0])) if is_valid_col(board, col)]
+
+# Lấy hàng sẽ được thả tới
 def get_row(board, col):
-    for row in reversed(range(len(board))):
-        if board[row][col] == EMPTY:
-            return row
-    return None
+    row = len(board) - 1
+    while board[row][col] != 0:
+        if row == -1:
+            return None
+        row -= 1
+    return row
 
-# def state_new1(old, new, state):
-#     for j in range(len(old[0])):
-#         for i in range(len(old)):
-#             if old[i][j] * new[i][j] == 0 and old[i][j] != new[i][j]:
-#                 state += str(j + 1)
-#                 return state
-#             if old[i][j] != 0:
-#                 break
-#     return state
-def state_new(old: list[list[int]], new: list[list[int]], state: str) -> str:
-    for col in range(len(old[0])):
-        for row in range(len(old)):
-            old_cell = old[row][col]
-            new_cell = new[row][col]
-            if old_cell != new_cell and old_cell == 0 and new_cell > 0:
-                return state + str(col + 1)
+# Check nước đi nào đó có thắng không
+def is_will_winning_move(board, player, col):
+    board_copy = clone_board(board) # copy để tránh thay đổi
+    row = get_row(board_copy, col)
+    if row is None: # Nếu không có nước đi hợp lệ  cột này
+        return False
+    # Duyệt các hàng
+    board_copy[row][col] = player
+    for r in range(len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r][c + i] == player for i in range(4)):
+                print("win", player, row, col, 1)
+                return True
+    # Duyệt các cột
+    for c in range(len(board_copy[0])):
+        for r in range(len(board_copy) - 3):
+            if all(board_copy[r + i][c] == player for i in range(4)):
+                print("win", player, row, col, 2)
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo chính
+    for r in range(len(board_copy) - 3):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r + i][c + i] == player for i in range(4)):
+                print("win", player, row, col, 3)
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo phụ
+    for r in range(3, len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r - i][c + i] == player for i in range(4)):
+                print("win", player, row, col, 4)
+                return True
+    return False
 
-            if old_cell != 0:
-                break  # Không cần xét tiếp cột này nếu ô đầu đã khác 0
-    return state
+# Check đac thắng chưa
+def is_winning_move(board, player):
+    board_copy = clone_board(board) # copy để tránh thay đổi
+    for r in range(len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r][c + i] == player for i in range(4)):
+                return True
+    # Duyệt các cột
+    for c in range(len(board_copy[0])):
+        for r in range(len(board_copy) - 3):
+            if all(board_copy[r + i][c] == player for i in range(4)):
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo chính
+    for r in range(len(board_copy) - 3):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r + i][c + i] == player for i in range(4)):
+                return True
+    # Duyệt các đường chéo cùng hướng đường chéo phụ
+    for r in range(3, len(board_copy)):
+        for c in range(len(board_copy[0]) - 3):
+            if all(board_copy[r - i][c + i] == player for i in range(4)):
+                return True
+    return False
 
-# kiểm tra 1 cột có valid
-def is_valid_move(board, col):
-    return board[0][col] == EMPTY
+# Check bảng hiện tại có hòa không (thường k cần xét)
+def is_draw(board):
+    return sum(1 for row in board for cell in row if cell == 0) == 0
 
-# lấy tất cả các cột valid
-def get_valid_moves(board):
-    return [col for col in range(len(board[0])) if is_valid_move(board, col)]
+# Kiểm tra bảng đã kết thúc game chưa
+def is_end_game(board):
+    return is_winning_move(board, 1) or is_winning_move(board, 2) or is_draw(board)
 
-def get_data():
-    filename = "board_response_test.jsonl"
-    existing_data_map = {}
-    if os.path.exists(filename):
-        try:
-            with open(filename, "r", encoding="utf-8") as f:
-                for line_number, line in enumerate(f, 1):
-                    line = line.strip()
-                    if line:
-                        try:
-                            obj = json.loads(line)
-                            key = obj.get("board")
-                            value = obj.get("response")
-                            key = json.dumps(key, sort_keys=False)
-                            if key is not None:
-                                existing_data_map[key] = value
-                        except json.JSONDecodeError as e:
-                            print(f"Error JSON at line {line_number}: {e}")
-        except Exception as e:
-            print(f"Could not read '{filename}': {e}")
+# Kiểm tra đã chuyển sang ván mới chưa (có 1 hoặc chưa có nước đi)
+def is_new_game(board):
+    return sum(1 for row in board for cell in row if cell > 0) <= 1
 
-    return existing_data_map
+# Tạo state mới
+# Chỉ xét các vị trí thay đổi mà vị trí trong bảng cũ là 0 và bảng mới > 0
+def get_new_state(old, new, state):
+    row, col = 6, 7
+    for i in range(len(old)):
+        for j in range(len(old[0])):
+            if old[i][j] == 0 and new[i][j] > 0:
+                row, col = i, j
+    # Thiếu trường hợp -1 xuất hiện ở hàng cuối thì chưa cập nhật trạng thái
+    if (row, col) == (6, 7):
+        return state
+    if row - 1 >= 0 and new[row-1][col] == -1:
+        return state + str(col + 1) + str(col + 1)
+    return state + str(col + 1)
 
-def output(old_board, new_board, str_state, valid_moves, data_map):
-    str_state = state_new(old_board, new_board, str_state)
+# Đánh giá điểm qua từng window kích thước 4
+def evaluate_window(window, player):
+    score = 0
+    opp_player = 1 if player == 2 else 1
+
+    if window.count(player) == 4:
+        score += 1000
+    elif window.count(opp_player) == 4:
+        score -= 1000
+    elif window.count(player) == 3 and window.count(0) == 1:
+        score += 50
+    elif window.count(opp_player) == 3 and window.count(0) == 1:
+        score -= 100
+    elif window.count(player) == 2 and window.count(0) == 2:
+        score += 10
+    elif window.count(opp_player) == 2 and window.count(0) == 2:
+        score -= 8
+
+    return score
+
+# Đánh giá điểm thế cờ của player
+def score_position(board, player):
+    if is_winning_move(board, player):
+        return 1000000
+    if is_winning_move(board, 3 - player):
+        return -1000000
+    score = 0
+
+    center_col = len(board[0]) // 2
+    center_count = sum([1 for row in range(len(board)) if board[row][center_col] == player])
+    score += center_count * 3
+
+    rows = len(board)
+    cols = len(board[0])
+    for row in range(rows):
+        for col in range(cols):
+            if col + 3 < cols:
+                score += evaluate_window(board[row][col: col + 4], player)
+            if row + 3 < rows:
+                score += evaluate_window([board[row+i][col] for i in range(4)], player)
+            if row + 3 < rows and col + 3 < cols:
+                score += evaluate_window([board[row + i][col + i] for i in range(4)], player)
+            if row - 3 > 0 and col + 3 < cols:
+                score += evaluate_window([board[row - i][col + i] for i in range(4)], player)
+
+    return score
+
+# Hàm minimax
+def minimax(board, depth, alpha, beta, player, isMax, max_time=None):
+    valid_cols = get_valid_cols(board)
+    if is_winning_move(board, player):
+        return None, 1000000  # Win
+    elif is_winning_move(board, 3 - player):
+        return None, -1000000  # Loss
+    elif is_draw(board):
+        return None, 0  #Draw
+    if depth == 0 or (max_time and time.time() > max_time):
+        return None, score_position(board, player)
+
+    if isMax:
+        value = -math.inf
+        column = random.choice(valid_cols)
+        for col in valid_cols:
+            row = get_row(board, col)
+            board[row][col] = player
+            new_score = minimax(board, depth-1, alpha, beta, 3-player, not isMax, max_time)[1]
+            board[row][col] = 0
+            if new_score > value:
+                value = new_score
+                column = col
+            alpha = max(alpha, value)
+            if alpha > beta:
+                break
+        return column, value
+    else:
+        value = math.inf
+        column = random.choice(valid_cols)
+        for col in valid_cols:
+            row = get_row(board, col)
+            board[row][col] = player
+            new_score = minimax(board, depth - 1, alpha, beta, 3 - player, not isMax, max_time)[1]
+            board[row][col] = 0
+            if new_score < value:
+                value = new_score
+                column = col
+            beta = min(beta, value)
+            if alpha > beta:
+                break
+        return column, value
+
+# Iterative Deepening
+def iterative_minimax(board, player, max_time=5.0):
+    start_time = time.time()
+    end_time = start_time + max_time
+    best_move = None
+    for depth in range(7, 10):
+        if time.time() > end_time:
+            break
+        best_move, score = minimax(board, depth, -math.inf, math.inf, player, True, end_time)
+    return best_move
+
+# Hàm nhận trạng thái của bảng cũ và bảng hiện tại để tra về nước đi tối ưu
+def output(last_board, new_board, player, last_state, valid_moves):
+    last_state = get_new_state(last_board, new_board, last_state)
+    not_choose_cols = []
+    # Check liệu có nước đi thắng không
+    # Ưu tiên thắng luôn hơn
+    for col in valid_moves:
+        if is_will_winning_move(new_board, player, col):
+            return col, last_state
+        board_copy = clone_board(new_board)
+        row = get_row(board_copy, col)
+        board_copy[row][col] = player
+        new_valid_cols = get_valid_cols(board_copy)
+        for col_other in new_valid_cols:
+            if is_will_winning_move(board_copy, 3-player, col_other) and len(valid_moves) > 0 and col_other not in not_choose_cols:
+                not_choose_cols.append(col_other)
+
+    # Check nếu không chặn thì đối thủ có thắng được không
+    for col in valid_moves:
+        if is_will_winning_move(new_board, 3 - player, col):
+            return col, last_state
 
     col = random.choice(valid_moves)
-    key = json.dumps(new_board, sort_keys=False)
-    if key in data_map:
-        response = data_map[key]
-        # print(response)
-        best_move = max(response, key=lambda move: move["score"])
-        col = int(best_move["move"]) - 1
-        return col, str_state
+    print(f"str = {last_state}")
 
     try:
-        url = f"http://ludolab.net/solve/connect4?position={str_state}&level=10"
-        response = requests.get(url, timeout=5)
+        url = f"http://connect4.gamesolver.org/solve?pos={last_state}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://connect4.gamesolver.org/",
+            "Origin": "https://connect4.gamesolver.org",
+            "Connection": "keep-alive",
+            "Sec-Fetch-Site": "same-origin",
+        }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         response = response.json()
-        best_move = max(response, key=lambda move: move["score"])
-        col = int(best_move["move"]) - 1
+        scores = response['score']
+        max_val = np.max(scores)
+        col = random.choice([i for i, v in enumerate(scores) if v == max_val])
     except requests.exceptions.RequestException as e:
         print(f"🌐 Request failed: {e}")
     except (ValueError, KeyError) as e:
@@ -107,27 +282,29 @@ def output(old_board, new_board, str_state, valid_moves, data_map):
     except Exception as e:
         print(f"⚠️ ERROR: {e}")
 
-    if col not in valid_moves:
+    print(valid_moves)
+    print(not_choose_cols)
+    if len(valid_moves) == len(not_choose_cols):
+        return random.choice(valid_moves), last_state
+
+    # Đảm bảo là nước đi sẽ luôn hợp lệ được
+    while col in not_choose_cols or col not in valid_moves:
         col = random.choice(valid_moves)
 
-    return col, str_state
+    return col, last_state
 
-
-# Create API by ngrok
 app = FastAPI()
 
 class GameState(BaseModel):
     board: List[List[int]]
     current_player: int
     valid_moves: List[int]
-    # is_new_game: bool
 
 class AIResponse(BaseModel):
     move: int
 
 old_board = create_board()
 str_state = ""
-data_map = get_data()
 
 @app.get("/api/test")
 async def health_check():
@@ -136,28 +313,117 @@ async def health_check():
 @app.post("/api/connect4-move")
 async def make_move(game_state: GameState) -> AIResponse:
     try:
-        global old_board, str_state, data_map
-        if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
+        start = time.time()
+        global old_board, str_state
+        if sum(1 for row in game_state.board for cell in row if cell > 0) <= 1:
             old_board = create_board()
             str_state = ""
-        new_board = [row[:] for row in game_state.board]
+            for col in range(len(game_state.board[0])):
+                if game_state.board[5][col] == -1:
+                    str_state += str(col + 1)
+        new_board = clone_board(game_state.board)
 
+        print("new board")
+        print_board(new_board)
+        print(f"state = {str_state}")
+        print(game_state.current_player)
+        print(game_state)
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
-        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves, data_map)
+        selected_move, str_state = output(old_board, new_board, game_state.current_player ,str_state, game_state.valid_moves)
         str_state += str(selected_move + 1)
 
-        old_board = [row[:] for row in new_board]
-        row = get_row(old_board, selected_move)
-        old_board[row][selected_move] = game_state.current_player
-        # print("old board")
-        # print_board(old_board)
+        row = get_row(new_board, selected_move)
+        new_board[row][selected_move] = game_state.current_player
+        old_board = clone_board(new_board)
+        if row > 0 and old_board[row - 1][selected_move] == -1:
+            str_state += str(selected_move + 1)
+        print("old board")
+        print_board(old_board)
 
-        # print("Choose", selected_move)
-
+        print("Choose", selected_move)
+        print(f"{time.time() - start:.4f}")
         return AIResponse(move=selected_move)
     except Exception as e:
         if game_state.valid_moves:
             return AIResponse(move=game_state.valid_moves[0])
         raise HTTPException(status_code=400, detail=str(e))
+
+def simulate(board, player):
+    result = {}
+    board_copy = clone_board(board)
+    valid_cols = get_valid_cols(board_copy)
+    for col in range(len(board_copy[0])):
+        if col in valid_cols:
+            row = get_row(board, col)
+            board_copy[row][col] = player
+            new_col = minimax(board_copy, 4, -math.inf, math.inf, 3 - player, True)[0]
+            new_row = get_row(board_copy, new_col)
+            b_copy = clone_board(board_copy)
+            b_copy[new_row][new_col] = 3 - player
+            result[col] = score_position(board, player)
+        else:
+            result[col] = 'Unknow'
+    return result
+
+# 2 logic tự chơi
+def play_game(current_player):
+    global old_board, str_state
+    old_board = create_board() #board sau lượt AI
+    str_state = ""
+
+    new_board = clone_board(old_board)
+    new_board = add_block(new_board)
+    player = current_player
+    print("Old board")
+    print_board(old_board)
+
+    while True:
+        start = time.time()
+        if is_draw(old_board):
+            print("Draw")
+            break
+
+        if player == 1:
+            print("New board")
+            print_board(new_board)
+            print(f"state = '{str_state}'")
+
+            valid_moves = get_valid_cols(new_board)
+            (choose, str_state) = output(old_board, new_board, player, str_state, valid_moves)
+            str_state += str(choose + 1)
+
+            print(f"Player {player} choose: {choose}")
+            row = get_row(new_board, choose)
+            new_board[row][choose] = player
+            old_board = clone_board(new_board)
+            if row > 0 and old_board[row - 1][choose] == -1:
+                str_state += str(choose + 1)
+            player = 1 if player == 2 else 2
+        else:
+            print("New board")
+            print_board(new_board)
+            print(f"state = '{str_state}'")
+
+            valid_moves = get_valid_cols(new_board)
+            (choose, str_state) = output(old_board, new_board, player, str_state, valid_moves)
+            str_state += str(choose + 1)
+            print(f"Player {player} choose: {choose}")
+            row = get_row(new_board, choose)
+            new_board[row][choose] = player
+            old_board = clone_board(new_board)
+            if row > 0 and old_board[row - 1][choose] == -1:
+                str_state += str(choose + 1)
+            player = 1 if player == 2 else 2
+
+        if is_winning_move(new_board, 1):
+            print("Player 1 win!")
+            break
+        if is_winning_move(new_board, 2):
+            print("Player 2 win!")
+            break
+        print(f"{time.time() - start:.4f}")
+
+if __name__ == "__main__":
+    play_game(1)
