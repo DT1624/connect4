@@ -299,22 +299,11 @@ def iterative_minimax(board, player, max_time=5.0):
 # Hàm nhận trạng thái của bảng cũ và bảng hiện tại để tra về nước đi tối ưu
 def output(last_board, new_board, player, last_state, valid_moves):
     last_state = get_new_state(last_board, new_board, last_state)
-    not_choose_cols = []
     # Check liệu có nước đi thắng không
     # Ưu tiên thắng luôn hơn
-    result, not_cols = find_depth(new_board, player)
+    result, not_choose_cols = find_depth(new_board, player)
     if result != -1:
         return result, last_state
-    for col in valid_moves:
-        if is_will_winning_move(new_board, player, col):
-            return col, last_state
-        board_copy = clone_board(new_board)
-        row = get_row(board_copy, col)
-        board_copy[row][col] = player
-        new_valid_cols = get_valid_cols(board_copy)
-        for col_other in new_valid_cols:
-            if is_will_winning_move(board_copy, 3-player, col_other) and len(valid_moves) > 0 and col_other not in not_choose_cols:
-                not_choose_cols.append(col_other)
 
     # Check nếu không chặn thì đối thủ có thắng được không
     for col in valid_moves:
@@ -349,7 +338,6 @@ def output(last_board, new_board, player, last_state, valid_moves):
 
     print(valid_moves)
     print(not_choose_cols)
-    print(not_cols)
     if len(valid_moves) == len(not_choose_cols):
         return random.choice(valid_moves), last_state
 
@@ -384,9 +372,9 @@ async def make_move(game_state: GameState) -> AIResponse:
         if sum(1 for row in game_state.board for cell in row if cell > 0) <= 1:
             old_board = create_board()
             str_state = ""
-            for col in range(len(game_state.board[0])):
-                if game_state.board[5][col] == -1:
-                    str_state += str(col + 1)
+            # for col in range(len(game_state.board[0])):
+            #     if game_state.board[5][col] == -1:
+            #         str_state += str(col + 1)
         new_board = clone_board(game_state.board)
 
         print("new board")
