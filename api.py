@@ -390,9 +390,9 @@ async def make_move(game_state: GameState) -> AIResponse:
         if sum(1 for row in game_state.board for cell in row if cell > 0) <= 1:
             old_board = create_board()
             str_state = ""
-            # for col in range(len(game_state.board[0])):
-            #     if game_state.board[5][col] == -1:
-            #         str_state += str(col + 1)
+            for col in range(len(game_state.board[0])):
+                if game_state.board[5][col] == -1:
+                    str_state += str(col + 1)
 
         new_board = clone_board(game_state.board)
         print("new board")
