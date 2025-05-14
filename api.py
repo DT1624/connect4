@@ -326,6 +326,7 @@ def output(last_board, new_board, player, last_state, valid_moves):
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         response = response.json()
+        print(response)
         scores = response['score']
         max_val = np.max(scores)
         col = random.choice([i for i, v in enumerate(scores) if v == max_val])
