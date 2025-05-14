@@ -4,11 +4,14 @@ import time
 
 import requests
 import numpy as np
-from copy import deepcopy
 
 from typing import List
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
+
+# clone board
+def clone_board(board):
+    return [row[:] for row in board]
 
 # In bảng
 def print_board(board):
@@ -48,7 +51,7 @@ def get_row(board, col):
 
 # Check nước đi nào đó có thắng không
 def is_will_winning_move(board, player, col):
-    board_copy = deepcopy(board) # copy để tránh thay đổi
+    board_copy = clone_board(board) # copy để tránh thay đổi
     row = get_row(board_copy, col)
     if row is None: # Nếu không có nước đi hợp lệ  cột này
         return False
@@ -81,7 +84,7 @@ def is_will_winning_move(board, player, col):
 
 # Check đac thắng chưa
 def is_winning_move(board, player):
-    board_copy = deepcopy(board) # copy để tránh thay đổi
+    board_copy = clone_board(board) # copy để tránh thay đổi
     for r in range(len(board_copy)):
         for c in range(len(board_copy[0]) - 3):
             if all(board_copy[r][c + i] == player for i in range(4)):
@@ -239,7 +242,7 @@ def output(last_board, new_board, player, last_state, valid_moves):
     for col in valid_moves:
         if is_will_winning_move(new_board, player, col):
             return col, last_state
-        board_copy = deepcopy(new_board)
+        board_copy = clone_board(new_board)
         row = get_row(board_copy, col)
         board_copy[row][col] = player
         new_valid_cols = get_valid_cols(board_copy)
@@ -314,7 +317,7 @@ async def make_move(game_state: GameState) -> AIResponse:
         if sum(1 for row in game_state.board for cell in row if cell > 0) <= 1:
             old_board = create_board()
             str_state = ""
-        new_board = deepcopy(game_state.board)
+        new_board = clone_board(game_state.board)
 
         print("new board")
         print_board(new_board)
@@ -329,7 +332,7 @@ async def make_move(game_state: GameState) -> AIResponse:
 
         row = get_row(new_board, selected_move)
         new_board[row][selected_move] = game_state.current_player
-        old_board = deepcopy(new_board)
+        old_board = clone_board(new_board)
         if row > 0 and old_board[row - 1][selected_move] == -1:
             str_state += str(selected_move + 1)
         print("old board")
@@ -345,7 +348,7 @@ async def make_move(game_state: GameState) -> AIResponse:
 
 def simulate(board, player):
     result = {}
-    board_copy = deepcopy(board)
+    board_copy = clone_board(board)
     valid_cols = get_valid_cols(board_copy)
     for col in range(len(board_copy[0])):
         if col in valid_cols:
@@ -353,20 +356,20 @@ def simulate(board, player):
             board_copy[row][col] = player
             new_col = minimax(board_copy, 4, -math.inf, math.inf, 3 - player, True)[0]
             new_row = get_row(board_copy, new_col)
-            b_copy = deepcopy(board_copy)
+            b_copy = clone_board(board_copy)
             b_copy[new_row][new_col] = 3 - player
             result[col] = score_position(board, player)
         else:
             result[col] = 'Unknow'
     return result
 
-
+# 2 logic tự chơi
 def play_game(current_player):
     global old_board, str_state
     old_board = create_board() #board sau lượt AI
     str_state = ""
 
-    new_board = deepcopy(old_board)
+    new_board = clone_board(old_board)
     new_board = add_block(new_board)
     player = current_player
     print("Old board")
@@ -379,18 +382,6 @@ def play_game(current_player):
             break
 
         if player == 1:
-            # print("New board")
-            # print_board(new_board)
-            # print(f"str = '{str_state}'")
-            #
-            # choose = int(input(f"Player {player} choose: "))
-            # while not is_valid_col(new_board, choose):
-            #     choose = int(input("Invalid! Repeat choose: "))
-            # row = get_row(new_board, choose)
-            # new_board[row][choose] = player
-            #
-            # player = 1 if player == 2 else 2
-
             print("New board")
             print_board(new_board)
             print(f"state = '{str_state}'")
@@ -402,7 +393,7 @@ def play_game(current_player):
             print(f"Player {player} choose: {choose}")
             row = get_row(new_board, choose)
             new_board[row][choose] = player
-            old_board = deepcopy(new_board)
+            old_board = clone_board(new_board)
             if row > 0 and old_board[row - 1][choose] == -1:
                 str_state += str(choose + 1)
             player = 1 if player == 2 else 2
@@ -417,7 +408,7 @@ def play_game(current_player):
             print(f"Player {player} choose: {choose}")
             row = get_row(new_board, choose)
             new_board[row][choose] = player
-            old_board = deepcopy(new_board)
+            old_board = clone_board(new_board)
             if row > 0 and old_board[row - 1][choose] == -1:
                 str_state += str(choose + 1)
             player = 1 if player == 2 else 2
