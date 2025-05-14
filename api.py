@@ -98,30 +98,31 @@ async def health_check():
 @app.post("/api/connect4-move")
 async def make_move(game_state: GameState) -> AIResponse:
     try:
-        global old_board, str_state
-        if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
-            old_board = create_board()
-            str_state = ""
-        new_board = deepcopy(game_state.board)
-
-        print("new board")
-        print_board(new_board)
-
-        print(game_state.current_player)
-        print(game_state)
-        if not game_state.valid_moves:
-            raise ValueError("No valid move")
-
-        selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves)
-        str_state += str(selected_move + 1)
-
-        old_board = deepcopy(new_board)
-        row = get_row(old_board, selected_move)
-        old_board[row][selected_move] = game_state.current_player
-        print("old board")
-        print_board(old_board)
-
-        print("Choose", selected_move)
+        # global old_board, str_state
+        # if sum(1 for row in game_state.board for cell in row if cell != 0) <= 1:
+        #     old_board = create_board()
+        #     str_state = ""
+        # new_board = deepcopy(game_state.board)
+        #
+        # print("new board")
+        # print_board(new_board)
+        #
+        # print(game_state.current_player)
+        # print(game_state)
+        # if not game_state.valid_moves:
+        #     raise ValueError("No valid move")
+        #
+        # selected_move, str_state = output(old_board, new_board, str_state, game_state.valid_moves)
+        # str_state += str(selected_move + 1)
+        #
+        # old_board = deepcopy(new_board)
+        # row = get_row(old_board, selected_move)
+        # old_board[row][selected_move] = game_state.current_player
+        # print("old board")
+        # print_board(old_board)
+        #
+        # print("Choose", selected_move)
+        selected_move = random.choice(game_state.valid_moves)
 
         return AIResponse(move=selected_move)
     except Exception as e:
