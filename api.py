@@ -132,16 +132,18 @@ def is_move_win(board, player, row, col):
 # Hàm check có nước nào nên đi để đảm bảo không
 # 1. Đánh đó chắc chắn thắng (nước đi sẽ tạo 1 vùng 3 trống trải)
 def find_depth(board, player):
-    not_valid_cols = []
+    not_choose_cols = []
     valid_cols1 = get_valid_cols(board)
     for col1 in valid_cols1:
         count_will_win = 0 # số cột đối thủ đi thì mình sẽ thắng
         board1 = clone_board(board)
         row1 = get_row(board1, col1)
         board1[row1][col1] = player
+
         # Nếu nước đi thắng luôn thì chọn ngay
+        # Ưu tiên thắng luôn trước nên xét trước
         if is_move_win(board1, player, row1, col1):
-            return col1, not_valid_cols
+            return col1, not_choose_cols
 
         valid_cols2 = get_valid_cols(board1)
         for col2 in valid_cols2:
@@ -150,8 +152,8 @@ def find_depth(board, player):
             board2[row2][col2] = 3-player
             # Đi khiến đối phương thẳng luôn => không nên chọn
             if is_move_win(board2, 3-player, row2, col2):
-                if col1 not in not_valid_cols:
-                    not_valid_cols.append(col1)
+                if col1 not in not_choose_cols:
+                    not_choose_cols.append(col1)
                     break
 
             valid_cols3 = get_valid_cols(board2)
@@ -164,8 +166,8 @@ def find_depth(board, player):
                     count_will_win += 1
                     break # thoát không cần đếm thêm
         if count_will_win == len(valid_cols2):
-            return col1, not_valid_cols # Nếu nước đi làm đối thủ đi nước nào cũng thua
-    return -1, not_valid_cols #không xét nữa mà dùng theo kết quả state
+            return col1, not_choose_cols # Nếu nước đi làm đối thủ đi nước nào cũng thua
+    return -1, not_choose_cols #không xét nữa mà dùng theo kết quả state
 
 
 # Check bảng hiện tại có hòa không (thường k cần xét)
@@ -179,21 +181,6 @@ def is_end_game(board):
 # Kiểm tra đã chuyển sang ván mới chưa (có 1 hoặc chưa có nước đi)
 def is_new_game(board):
     return sum(1 for row in board for cell in row if cell > 0) <= 1
-
-# Tạo state mới
-# Chỉ xét các vị trí thay đổi mà vị trí trong bảng cũ là 0 và bảng mới > 0
-def get_new_state(old, new, state):
-    row, col = 6, 7
-    for i in range(len(old)):
-        for j in range(len(old[0])):
-            if old[i][j] == 0 and new[i][j] > 0:
-                row, col = i, j
-    # Thiếu trường hợp -1 xuất hiện ở hàng cuối thì chưa cập nhật trạng thái
-    if (row, col) == (6, 7):
-        return state
-    if row - 1 >= 0 and new[row-1][col] == -1:
-        return state + str(col + 1) + str(col + 1)
-    return state + str(col + 1)
 
 # Đánh giá điểm qua từng window kích thước 4
 def evaluate_window(window, player):
@@ -296,34 +283,53 @@ def iterative_minimax(board, player, max_time=5.0):
         best_move, score = minimax(board, depth, -math.inf, math.inf, player, True, end_time)
     return best_move
 
+# Tạo state mới
+# Chỉ xét các vị trí thay đổi mà vị trí trong bảng cũ là 0 và bảng mới là > 0
+# Check ô trên nó có phải -1 không
+# bỏ qua ô -1 ở hàng cuối k xét gì
+def get_new_state(old, new, state):
+    row, col = 6, 7
+    for i in range(len(old)):
+        for j in range(len(old[0])):
+            if old[i][j] == 0 and new[i][j] > 0:
+                row, col = i, j
+    # Thiếu trường hợp -1 xuất hiện ở hàng cuối thì chưa cập nhật trạng thái
+    if (row, col) == (6, 7): # khi chơi trước tại đầu ván
+        return state
+    if row - 1 >= 0 and new[row-1][col] == -1:
+        return state + str(col + 1) + str(col + 1)
+    return state + str(col + 1)
+
 # Hàm nhận trạng thái của bảng cũ và bảng hiện tại để tra về nước đi tối ưu
 def output(last_board, new_board, player, last_state, valid_moves):
+    # lấy trạng thái sau nước đi của đối phương
     last_state = get_new_state(last_board, new_board, last_state)
-    # Check liệu có nước đi thắng không
-    # Ưu tiên thắng luôn hơn
+
+    # Check liệu có nước đi nào cần ưu tiên không, và những nước đi nên tránh
+    # != -1 là có nước đi ưu tiên (sẽ thắng)
     result, not_choose_cols = find_depth(new_board, player)
     if result != -1:
-        return result, last_state
+        # Có vị trí ưu tiên, cần kiểm tra xem có thắng được luôn không
+        # Nếu chưa thắng luôn thì cần kiểm tra xem có thể thua được không
+        if is_will_winning_move(new_board, player, result):
+            return result, last_state
 
     # Check nếu không chặn thì đối thủ có thắng được không
     for col in valid_moves:
         if is_will_winning_move(new_board, 3 - player, col):
             return col, last_state
 
-    col = random.choice(valid_moves)
-    print(f"str = {last_state}")
-    print(f"col choose = {col}, A")
+    # Nếu đánh ở vị trí nào cũng không khiến thua được thì chọn nước tối ưu đã tìm
+    if result != -1:
+        return result, last_state
+
     print(valid_moves)
     print(not_choose_cols)
     if len(valid_moves) == len(not_choose_cols):
         return random.choice(valid_moves), last_state
-    print(f"col choose = {col}, B")
 
-    # Đảm bảo là nước đi sẽ luôn hợp lệ được
-    while col in not_choose_cols or col not in valid_moves:
-        col = random.choice(valid_moves)
-    print(f"col choose = {col}, C")
-
+    col = random.choice(valid_moves)
+    print(f"str = {last_state}")
     try:
         url = f"http://connect4.gamesolver.org/solve?pos={last_state}"
         headers = {
@@ -337,9 +343,11 @@ def output(last_board, new_board, player, last_state, valid_moves):
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         response = response.json()
-        print(response)
         scores = response['score']
-        max_val = np.max(scores)
+        valid_scores = [score for score in scores if abs(score) < 20]
+        print(response)
+        print(valid_scores)
+        max_val = np.max(valid_scores)
         col = random.choice([i for i, v in enumerate(scores) if v == max_val])
     except requests.exceptions.RequestException as e:
         print(f"🌐 Request failed: {e}")
@@ -348,6 +356,11 @@ def output(last_board, new_board, player, last_state, valid_moves):
     except Exception as e:
         print(f"⚠️ ERROR: {e}")
 
+    # Đảm bảo là nước đi sẽ luôn hợp lệ được
+    result_cols = list(set(valid_moves) - set(not_choose_cols))
+    if col not in result_cols:
+        col = random.choice(result_cols)
+    print(f"col choose = {col}")
     return col, last_state
 
 app = FastAPI()
@@ -372,19 +385,22 @@ async def make_move(game_state: GameState) -> AIResponse:
     try:
         start = time.time()
         global old_board, str_state
+
+        # Nếu mà bắt đầu ván chơi mới
         if sum(1 for row in game_state.board for cell in row if cell > 0) <= 1:
             old_board = create_board()
             str_state = ""
             # for col in range(len(game_state.board[0])):
             #     if game_state.board[5][col] == -1:
             #         str_state += str(col + 1)
-        new_board = clone_board(game_state.board)
 
+        new_board = clone_board(game_state.board)
         print("new board")
         print_board(new_board)
+
         print(f"state = {str_state}")
-        print(game_state.current_player)
         print(game_state)
+
         if not game_state.valid_moves:
             raise ValueError("No valid move")
 
