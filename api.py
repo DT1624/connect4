@@ -106,6 +106,68 @@ def is_winning_move(board, player):
                 return True
     return False
 
+# Hàm check win dựa theo 1 nước đi hiện tại
+def is_move_win(board, player, row, col):
+    rows, cols = len(board), len(board[0])
+    directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+    for dr, dc in directions:
+        count_val = 1
+
+        r, c = row - dr, col - dc
+        while 0 <= r < rows and 0 <= c < cols and board[r][c] == player:
+            count_val += 1
+            r -= dr
+            c -= dc
+
+        r, c = row + dr, col + dc
+        while 0 <= r < rows and 0 <= c < cols and board[r][c] == player:
+            count_val += 1
+            r += dr
+            c += dc
+
+        if count_val >= 4:
+            return True
+    return False
+
+# Hàm check có nước nào nên đi để đảm bảo không
+# 1. Đánh đó chắc chắn thắng (nước đi sẽ tạo 1 vùng 3 trống trải)
+def find_depth(board, player):
+    not_valid_cols = []
+    valid_cols1 = get_valid_cols(board)
+    for col1 in valid_cols1:
+        count_will_win = 0 # số cột đối thủ đi thì mình sẽ thắng
+        board1 = clone_board(board)
+        row1 = get_row(board1, col1)
+        board1[row1][col1] = player
+        # Nếu nước đi thắng luôn thì chọn ngay
+        if is_move_win(board1, player, row1, col1):
+            return col1, not_valid_cols
+
+        valid_cols2 = get_valid_cols(board1)
+        for col2 in valid_cols2:
+            board2 = clone_board(board1)
+            row2 = get_row(board2, col2)
+            board2[row2][col2] = 3-player
+            # Đi khiến đối phương thẳng luôn => không nên chọn
+            if is_move_win(board2, 3-player, row2, col2):
+                if col1 not in not_valid_cols:
+                    not_valid_cols.append(col1)
+                    break
+
+            valid_cols3 = get_valid_cols(board2)
+            for col3 in valid_cols3:
+                board3 = clone_board(board2)
+                row3 = get_row(board3, col3)
+                board3[row3][col3] = player
+                # Đi khiến đối phương thẳng luôn => không nên chọn
+                if is_move_win(board3, player, row3, col3):
+                    count_will_win += 1
+                    break # thoát không cần đếm thêm
+        if count_will_win == len(valid_cols2):
+            return col1, not_valid_cols # Nếu nước đi làm đối thủ đi nước nào cũng thua
+    return -1, not_valid_cols #không xét nữa mà dùng theo kết quả state
+
+
 # Check bảng hiện tại có hòa không (thường k cần xét)
 def is_draw(board):
     return sum(1 for row in board for cell in row if cell == 0) == 0
@@ -240,6 +302,9 @@ def output(last_board, new_board, player, last_state, valid_moves):
     not_choose_cols = []
     # Check liệu có nước đi thắng không
     # Ưu tiên thắng luôn hơn
+    result, not_cols = find_depth(new_board, player)
+    if result != -1:
+        return result, last_state
     for col in valid_moves:
         if is_will_winning_move(new_board, player, col):
             return col, last_state
@@ -284,6 +349,7 @@ def output(last_board, new_board, player, last_state, valid_moves):
 
     print(valid_moves)
     print(not_choose_cols)
+    print(not_cols)
     if len(valid_moves) == len(not_choose_cols):
         return random.choice(valid_moves), last_state
 
@@ -335,7 +401,7 @@ async def make_move(game_state: GameState) -> AIResponse:
         str_state += str(selected_move + 1)
 
         row = get_row(new_board, selected_move)
-        new_board[row][selected_move] = game_state.current_player
+        new_board[row][selected_move] = game_state.qcurrent_player
         old_board = clone_board(new_board)
         if row > 0 and old_board[row - 1][selected_move] == -1:
             str_state += str(selected_move + 1)
