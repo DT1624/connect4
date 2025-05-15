@@ -147,6 +147,7 @@ def find_depth(board, player):
 
         valid_cols2 = get_valid_cols(board1)
         for col2 in valid_cols2:
+            count_opp_win = 0  # đếm số cột mà mình đánh tiếp sẽ thua
             board2 = clone_board(board1)
             row2 = get_row(board2, col2)
             board2[row2][col2] = 3-player
@@ -165,6 +166,21 @@ def find_depth(board, player):
                 if is_move_win(board3, player, row3, col3):
                     count_will_win += 1
                     break # thoát không cần đếm thêm
+
+                valid_cols4 = get_valid_cols(board3)
+                for col4 in valid_cols4:
+                    board4 = clone_board(board3)
+                    row4 = get_row(board4, col4)
+                    board4[row4][col4] = 3-player
+                    # Đi khiến đối phương thẳng luôn
+                    if is_move_win(board4, 3-player, row4, col4):
+                        count_opp_win += 1
+                        break  # thoát không cần đếm thêm
+            if count_opp_win == len(valid_cols3):
+                if col1 not in not_choose_cols:
+                    not_choose_cols.append(col1)
+                    break
+
         if count_will_win == len(valid_cols2):
             return col1, not_choose_cols # Nếu nước đi làm đối thủ đi nước nào cũng thua
     return -1, not_choose_cols #không xét nữa mà dùng theo kết quả state
@@ -496,6 +512,10 @@ def play_game(current_player):
         if is_winning_move(new_board, 2):
             print("Player 2 win!")
             break
+        amount_time = time.time() - start
+        if amount_time > 10:
+            print("Timeout")
+            return
         print(f"{time.time() - start:.4f}")
 
 if __name__ == "__main__":
